@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>BlogApp</title>
+    <%= csrf_meta_tags %>
+
+    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+    <script src="/node_modules/es6-shim/es6-shim.js"></script>
+    <script src="/node_modules/zone.js/dist/zone.js"></script>
+    <script src="/node_modules/reflect-metadata/Reflect.js"></script>
+    <script src="/node_modules/systemjs/dist/system.src.js"></script>
+    <script src="/node_modules/actioncable-js/dist/action_cable.js"></script>
+
+    <link href="/css/assets/styles/salesforce-lightning-design-system.css" rel="stylesheet" type="text/css" /> 
+  </head>
+
+  <body>
+    <%= yield %>
+  </body>
+</html>
