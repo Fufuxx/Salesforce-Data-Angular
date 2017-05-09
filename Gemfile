@@ -29,10 +29,14 @@ gem 'turbolinks', '~> 5'
 gem 'jbuilder', '~> 2.5'
 gem 'sprockets'
 gem 'rack-cors'
-gem 'redis'
+
+gem 'omniauth'
+gem 'omniauth-salesforce'
 gem 'devise'
-gem 'metaforce', github: 'ssinghvi/metaforce3'
 gem 'restforce'
+
+gem 'redis'
+gem 'metaforce', github: 'ssinghvi/metaforce3'
 # Use Redis adapter to run Action Cable in production
 # gem 'redis', '~> 3.0'
 # Use ActiveModel has_secure_password

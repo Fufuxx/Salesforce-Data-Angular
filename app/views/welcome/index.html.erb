@@ -1,4 +1,9 @@
 <script>
+    var context = {
+      user: JSON.parse('<%= raw @current_user.id %>'),
+      organization: JSON.parse('<%= raw @organization.id %>'),
+      instanceUrl: '<%= @organization.instanceurl %>'
+    };
     // packages tells the System loader how to load when no filename and/or no extension
     var packages = {
       'app':                        { main: 'main.js',  defaultExtension: 'js' },
@@ -39,4 +44,4 @@
     System.import('app/main');
 </script>
 <base href=".">
-<app>Loading...</app>  
+<app>Loading...</app>

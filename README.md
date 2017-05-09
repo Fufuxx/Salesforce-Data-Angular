@@ -1,135 +1,376 @@
-## Where we left off
+###### Where we left off
 
-If you didn't go through it, I would recommend to follow the first tutorial to get you base app running, as I'll use it as a starting point for this tuto: [Get Started with rails 5 & Angular](https://q-labs.herokuapp.com/2016/10/28/get-started-angular2-rails5/)
+This is the 3rd of a series of tutorials on getting started with Angular and Ruby on Rails. Here are the 2 first tutorials if you missed it ! :)
+1. First Part: [Get Started with rails 5 & Angular](https://q-labs.herokuapp.com/2016/10/28/get-started-angular2-rails5/)
+2. Second part: [Plugging Angular to Rails ActionCable - WebSockets](https://q-labs.herokuapp.com/2017/04/10/angular-and-actioncable-observable-pattern-and-websocket/)
 
-###### Updating the all thing
+If you want to jump straight away to this one, here is the [github repo of the last part](https://github.com/Fufuxx/ActionCable-Angular) so you can just start from here.
 
-As you know in software, everything evolves quite rapidly, so since the last post on getting started on rails 5 and Angular, Angular came up with a brand new Version ! **4.0.0**
+###### What we are going to do
 
-So let's go ahead and update our Angular version as well as setting action-cable.js library for our WebSocket.
+Basically we are going to set up salesforce authentication on the Angular app so by the end of this tutorial, you'll be able to access and modify data of your salesforce Instance from your angular app.
 
-Open up ```package.json``` in you app root directory and update its content
+If you didn't read it yet, I would advise looking into the great [User Authentication](https://q-labs.herokuapp.com/2017/01/30/user-authentication-in-sdo-tools-for-dummies/) article wrote by **Arunima Dasgupta**, as we are basically going to implement the most part of it.
 
-```
-{
-  "name": "rails-ng2",
-  "version": "0.0.1",
-  "scripts": {
-    "tsc": "tsc",
-    "tsc:w": "tsc -w",
-    "typings": "typings",
-    "postinstall": "typings install"
-  },
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
-  "license": "ISC",
-  "dependencies": {
-    "@angular/animations": "^4.0.0",
-    "@angular/common": "^4.0.0",
-    "@angular/compiler": "^4.0.0",
-    "@angular/compiler-cli": "^4.0.0",
-    "@angular/core": "^4.0.0",
-    "@angular/forms": "^4.0.0",
-    "@angular/http": "^4.0.0",
-    "@angular/platform-browser": "^4.0.0",
-    "@angular/platform-browser-dynamic": "^4.0.0",
-    "@angular/platform-server": "^4.0.0",
-    "@angular/platform-webworker": "^4.0.0",
-    "@angular/router": "^4.0.0",
-    "@angular/upgrade": "^4.0.0",
-    "actioncable-js": "5.0.0-rc2",
-    "es6-shim": "^0.35.0",
-    "reflect-metadata": "^0.1.3",
-    "rxjs": "^5.0.1",
-    "systemjs": "0.19.41",
-    "time-ago-pipe": "^1.1.1",
-    "typescript": "^2.2.2",
-    "zone.js": "^0.8.4"
-  },
-  "engines": {
-    "node": ">= 5.4.1 < 7"
-  },
-  "devDependencies": {
-    "typescript": "^2.0.10",
-    "typings": "^2.0.0"
-  }
-}
-```
-Then, open up your terminal, go to your root directory, and type the command ```npm install```
+###### Set up the needed libraries
 
-Ok, now we need to delete the old ```node_modules``` folder in ```public/``` directory and replace it with the new one just generated in the app root directory.
+So we are going to need 3 libraries:
+1. Devise
+2. Omniauth
+3. Omniauth Salesforce
 
-One last thing...
-Go to tsconfig.json in your app root directory and make sure you have the ```compileOnSave``` property set up.
-
-We have noticed that some IDE didn't generate js and map.js file automatically without it.
+So let's go ahead and make sure we have those in our gemfile.
 
 ```
-{
-  "compileOnSave": true,
-  "compilerOptions": {
-    "target": "es5",
-    "module": "system",
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "removeComments": false,
-    "noImplicitAny": false,
-    "rootDir":"public"
-  },
-  "exclude": [
-    "node_modules",
-    "typings/main",
-    "typings/main.d.ts"
-  ]
-}
+gem 'omniauth'
+gem 'omniauth-salesforce'
+gem 'devise'
+gem 'restforce'
 ```
 
-Once that done, run ```foreman start -p 3000``` in your command line and go to ```localhost:3000``` in your favorite browser.
+I have added the library 'restforce' as we will be using it to access nd modify Salesforce data once authenticated.
+[More infos on Restforce](https://github.com/ejholmes/restforce)
 
-> You should still see the original app running. It has now been updated ! Woooo...
+run ```bundle install``` from your terminal window in your app directory.
 
-###### Setting up ActionCable - Backend
+###### Set Up Connected app
 
-In you app root directory, go to ```app/views/layouts/application.html.erb``` and make sure you have the action-cable.js script set up
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/Apr/Screen_Shot_2017_04_10_at_12_54_25_PM-1491825301767.png)
+We are going to need a Client Id and Client Secret in order to auth to salesforce. To do so, we need to first create a connected app.
 
-Now, in ```app/channels``` directory, create a new file called **my_channel.rb**, which contains
+In your Org go to Setup -> Create and Apps. Scroll down to connected app and create a new connected app.
+Call it the name you want. I chose Salesforce auth.
 
+Tick the enable OAuth Settings and enter ```http://localhost:3000/auth/salesforce/callback``` as callback url.
+Finally give full access and save.
+
+![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_11_45_47_AM-1494326773533.png)
+
+You now should have access to client_id and client_secret.
+Let's set them up as env variable in our project.
+
+Go to your app directory and create a new file called .env (if you don't have one already).
+Like so (of course replace ```CLIENT_ID``` and ```CLIENT_SECRET`` values with the one from your connected app):
+![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_10_48_44_AM-1494323348095.png)
+
+This will set them up as Environment variable for our project.
+
+###### Set Up Devise
+
+Remember the devise library we set up at the start ? It's time to set it up properly.
+It will easily set up a user sign in process for us.
+
+Go to your terminal, to the root of the application an run: ```rails generate devise:install```
+
+In you app, go to config/environments/development.rb and add this line at the end:
 ```
-class MyChannel < ApplicationCable::Channel
-  def subscribed
-    p "Setting Stream"
-    stream_from "MyStream"
-  end
+config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+```
 
-  def doStuff(data)
-    p "Doing stuff"
-    p data
-    ActionCable.server.broadcast "MyStream",
-      { :method => 'doStuff', :status => 'success',
-        :data => { :message => 'Stuff done !' } }
+That's it, don't worry about the other instructions on the screen, we won't need it here.
+
+In the terminal again run:
+```
+rails generate devise User
+```
+
+1. In the app, go to db/migrate and open the file inside. We need change this line:```add_index :users, :email, unique: true ```
+into this: ```add_index :users, :email ```
+
+And add this one: ``` t.string :uid ```
+
+> We do this because the same email user can exist in different org (SDO) so unicity is not only on email.
+
+2. In app/models/user.rb remove ```:validatable```
+
+> Validatable would make use of encypted password for login. In our case, we are going to use Omniauth to login through salesforce so no need for this.
+
+We need a model for Organization as well.
+In the terminal again run:
+```
+rails generate migration AddOrganization
+```
+In db/migrate you should see the new file and inside set this up:
+```
+class AddOrganization < ActiveRecord::Migration[5.0]
+  def change
+    create_table :organizations do |t|
+      t.string :sfdc_id
+      t.integer :user_id
+      t.string :name
+      t.string :username
+
+      t.string :orgname
+      t.string :orgtype
+      t.datetime :orgexpiry
+
+      t.binary :logo
+
+      t.string :token
+      t.string :instanceurl
+      t.string :metadataurl
+      t.string :serviceurl
+      t.string :refreshtoken
+
+      t.string :division
+
+      t.datetime :last_sign_in_date
+      t.datetime :org_created_date
+
+      t.integer :exp_notice_level
+      t.integer :whitelist_id
+      t.integer :organization_type_id
+
+      t.timestamps
+    end
   end
 end
 ```
-ActionCable will create a general channel for us. From there, we can initiate a Stream that we'll be able to subscribe to.
-Once Subscribed, we'll be able to receive notifications from the Stream (broadcast method above).
+Ok our model is now ready. Go to your terminal window and run ```rails db:migrate```
 
-> That is our Backend set up for ActionCable. Pretty fast and easy.
+Last things.
+-> Create a organization.rb file under /app/models containing:
+```
+class Organization < ApplicationRecord
+    belongs_to :user
+end
+```
+-> In user.rb add on ``` has_many :organizations ``` below devise
 
-###### Setting up ActionCable - Frontend
+###### Setting up Omniauth
 
-Now it's time to hook up Angular into this, and in order to do so, we are going to use the action-cable.js library.
+In config/initializers, add a file called ```salesforce.rb``` that contains:
+```
+module OmniAuth
+  module Strategies
+    class Salesforce
+      def raw_info
+        access_token.options[:mode] = :query
+        access_token.options[:param_name] = :oauth_token
+        u = URI.parse(access_token['id'])
+        u.host = URI.parse(access_token['instance_url']).host
+        @raw_info ||= access_token.post(u.to_s).parsed
+      end
+    end
 
-In the ```/public/app/app.component.ts```, let's set up our connection
+  end
+end
+```
 
+And another one called ```omniauth.rb``` containing:
+```
+Rails.application.config.middleware.use OmniAuth::Builder do
+  provider :salesforce, ENV['CLIENT_ID'], ENV['CLIENT_SECRET']
+end
+```
+
+Let's set up the callback URI route and handler.
+In config/route.rb add on this:
+```
+namespace :auth do
+    match "/salesforce/callback", :to => "session#callback", :via => [:get, :post]
+end
+```
+And create the corresponding controller. In app/controller create a new folder auth and inside a ```session_controller.rb``` controller.
+
+Fill the session_controller.rb with this:
+```
+class Auth::SessionController < ApplicationController
+	skip_before_filter :verify_authenticity_token
+
+  def callback
+    begin
+      auth = request.env['omniauth.auth']
+      extra = request.env['omniauth.params']['returnURL']
+
+      user = User.find_or_create_by(:email => auth['extra']['email'], :uid => auth['uid'])
+      user.uid = auth['uid']
+      user.save
+
+      o = Organization.find_or_create_by(:sfdc_id => auth['extra']['organization_id'], :user_id => user.id)
+      o.user_id = user.id
+      o.username = auth['extra']['username']
+      o.name = auth['extra']['display_name']
+      o.token = auth['credentials']['token']
+      o.instanceurl = auth['extra']['instance_url']
+      o.refreshtoken = auth['credentials']['refresh_token']
+      o.metadataurl = auth['info']['urls']['metadata'].sub '{version}', '29.0'
+      o.serviceurl = auth['info']['urls']['enterprise'].sub '{version}', '29.0'
+      o.save
+
+      set_session_vars(user, auth)
+      sign_in_and_redirect user
+    rescue Exception => ex
+      p "====== Exception ======"
+      p ex
+    end
+  end
+
+  def set_session_vars(user, auth)
+    session[:user_id]               = user.id
+    session['auth.token']           = auth['credentials']['token']
+    session['auth.refresh_token']   = auth['credentials']['refresh_token']
+    session['auth.instance_url']    = auth['extra']['instance_url']
+    session['auth.picture']         = auth['extra']['photos']['picture']
+    session['auth.user_id']         = auth['extra']['user_id']
+    session['auth.username']        = auth['extra']['username']
+    session['auth.display_name']    = auth['extra']['display_name']
+    session['auth.organization_id'] = auth['extra']['organization_id']
+    session['auth.metadata_url']    = auth['info']['urls']['metadata'].sub '{version}', ENV["API_VERSION"]
+    session['auth.service_url']     = auth['info']['urls']['enterprise'].sub '{version}', ENV["API_VERSION"]
+  end
+
+end
+
+```
+Here is what is happening
+
+On callback from Salesforce Authentication, we use the logged-in user and org info to set session variables and 'sign_in' the user (setting a current_user devise variable) that we create if no email + uid match found.
+
+This, added up to the Organization insert allows us to keep those info in our database for future use. And in a session to be able to get those info in our welcome controller.
+
+In app/controller/welcome_controller.rb :
+```
+class WelcomeController < ApplicationController
+  def index
+    p "Welcome Index"
+    if current_user.nil?
+      p "Current User not set"
+      redirect_to '/auth/salesforce', :id => 'sign_in' and return
+    end
+
+    p session
+    p current_user  
+  end
+end  
+```
+When reaching the index, we look into current_user devise variable. If nil (not signed_in) we redirect to omniauth salesforce login that will handle the Authorization and Authentication process and redirect us to our callback above that will then sign in the user and set the sesssion and database records.
+
+>Wow ! that is a lot of information to process
+
+I know ! It's actually not so complicated and overwhelming, it's just that it's using several libraries to handle this all Salesforce Authentication process.
+
+***Let's test all this***
+
+In your terminal, go to your root directory and run ```foreman start -p 3000```.
+Then go to your browser and ```localhost:3000```
+
+You should be following the salesforce authentication process and get to your app welcome index page.
+
+If you look into your terminal, you should see session and current_user information.
+
+> Congratulations ! You have now an access token to use Salesforce api in your org :)
+
+###### Passing Org and User infos to Angular
+
+Change welcome_controller.rb as follow:
+```
+class WelcomeController < ApplicationController
+  def index
+    p "Welcome Index"
+    if current_user.nil?
+      p "Current User not set"
+      redirect_to '/auth/salesforce', :id => 'sign_in' and return
+    end
+
+    @organization = Organization.where(:sfdc_id => session['auth.organization_id']).first if session['auth.organization_id']
+    @current_user = current_user
+
+    p @organization
+    p @current_user
+
+  end
+end
+```
+Refresh your browser (localhost:3000). You should now see your organization and user infos in the terminal window.
+
+Now go to your /app/view/welcome/index.html.erb
+Inside ```<script>``` and before ```var package = ...```
+Set a context variable as follow:
+```
+var context = {
+      user: JSON.parse('<%= raw @current_user.id %>'),
+      organization: JSON.parse('<%= raw @organization.id %>'),
+      instanceUrl: '<%= @organization.instanceurl %>'
+    };
+```
+Now go to /public/app/app.component.ts and add this:
 ```
 import {Component} from '@angular/core'
 
 declare let ActionCable:any
+declare let context:any
+```
+Then inside the constructor:
+```
+console.log(context);
+```
+Go to your browser, localhost:3000 and inspect the page.
+You should now see the context object print in the console containing your context (user id and organization id).
+
+![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_12_50_42_PM-1494330676701.png)
+
+> Now that you have the context, you can use it by sending it in the request you make to Rails. Rails will then be able to retrieve the corresponding db record and get the token to use Restforce library to play with your instance data.
+
+###### Restforce Example - Getting a list of Account
+
+Ok let's modify our doStuff method in /public/app/app.component.ts to add context to data sent to backend:
+```
+doStuff: function(data){    
+    data.context = context;
+    console.log('Doing stuff', data);
+    this.perform('doStuff', data);
+}
+```
+Now go to your backend /app/channels/my_channel.rb and set the doStuff action as follow:
+```
+def doStuff(data)
+ p "Doing stuff"
+ p data["context"]
+
+
+ ActionCable.server.broadcast "MyStream",
+      { :method => 'doStuff', :status => 'success',
+        :data => { :message => 'Stuff done !' } }
+end
+```
+If you reload your localhost:3000, you will see the context being printed in the terminal.
+
+Now let's use it to set up Restforce and query our Accounts.
+Change the method again as follow:
+```
+def doStuff(data)
+    p "Doing stuff"
+    begin
+    o =  Organization.find(data["context"]["organization"])
+    p o
+
+    sClient = Restforce.new :oauth_token => o.token,
+        :refresh_token => o.refreshtoken,
+        :instance_url => o.instanceurl,
+        :api_version => ENV['API_VERSION'], :client_id => ENV['CLIENT_ID'], :client_secret => ENV['CLIENT_SECRET']
+
+    accounts = sClient.query("Select Id, Name from Account Limit 10")
+
+    rescue Exception => e
+      ActionCable.server.broadcast "MyStream",
+        { :method => 'doStuff', :status => 'error', :data => { :message => e.message } }
+    end
+    ActionCable.server.broadcast "MyStream",
+      { :method => 'doStuff', :status => 'success', :data => { :accounts => accounts } }
+  end
+```
+Re-run you localhost and click the doStuff button, you should now see something like that in your console:
+![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_1_06_55_PM-1494331634414.png)
+
+###### Display the Account list on the page using Angular
+
+So now that we have the data, we need to display it.
+Let's start by changing the app.component.ts as follow
+```
+import {Component} from '@angular/core'
+
+declare let ActionCable:any
+declare let context:any
 
 @Component({
   selector: 'app',
@@ -138,8 +379,12 @@ declare let ActionCable:any
 
 export class AppComponent{
   App: any = {};
+  accounts:any;
 
   constructor(){
+    console.log(context);
+    let self = this;
+
     this.App.cable = ActionCable.createConsumer("ws://localhost:3000/cable");
     this.App.MyChannel = this.App.cable.subscriptions.create({channel: "MyChannel", context: {} }, {
       // ActionCable callbacks
@@ -154,170 +399,47 @@ export class AppComponent{
       },
       received: function(data) {
         console.log('Data Received from backend', data);
+        if(data && data.accounts){
+          self.accounts = data.accounts;
+        }
+      },
+      doStuff: function(data){
+        console.log('Doing stuff', data);
+        data.context = context;
+        this.perform('doStuff', data);
       }
     });
   }
 
 }
-
 ```
-**What changed ?**
+What changed ? **2 things**:
+1. We check if data and data,accounts on data received and if exists, we set the added 'accounts' property to thie value.
 
-1 - ```declare let ActionCable:any;```
-If the class used by action-cable javascript library is not declared, Angular will reject it as undefined. So we simply define it for Angular so we can use it from there.
+2.```let self = this;``` Because the 'receive' function is inside the App.cable.subscription.create, the 'this' there does not point to our component class anymore. Therefore we make sure to set the component reference to a different variable before so we can use it then.
 
-2 - We are calling ```ActionCable.createConsumer``` method to create a connection to our channel from Angular, to be able to call methods from here (such as ```doStuff```) and receive broadcast responses ```received: function(data){}``` method.
-
-Go to your terminal, stop the server if running (cmd+c or ctrl+c) and rerun ```foreman start -p 3000```
-
-reload your app and you should get something like that in your browser console:
-![Logs](https://sdotools-q-labs.s3.amazonaws.com/2017/Apr/Screen_Shot_2017_04_10_at_11_53_26_AM-1491821740610.png)
-
-> You have now connected your Angular front end to rails ActionCable backend !
-
-How about we try out calling our doStuff() method ? So we see how this all thing works.
-
-Go back to your ```/public/app/app.component.html``` and set this:
-
+Now we just need to set the list in the app.component.html as follow:
 ```
+<header-component></header-component>
 <div class="slds-grid slds-wrap">
   <div class="slds-p-around--medium">
     <button class="slds-button slds-button--destructive slds-m-right--small"
-            (click)="App.MyChannel.doStuff({ data: 'Just a sting' })">Do Stuff</button>
+            (click)="App.MyChannel.doStuff({ data: 'Just a string' })">Do Stuff</button>
   </div>
-</div>
-
-```
-Here we simply added a button to our app component and on click, we are calling a method doStuff() on our App.MyChannel that we set up in the constructor of our class.
-
-> Yes ! See, we can do that ! 'App' is a property (type 'any' so we can use it as an object) of your app.component.ts class (check it), so we can refer to it anywhere in the class, but also in our template.
-
-We now need to set up this method on the App.MyChannel in the app component class ```app.component.ts```
-So open up the class, and add the doStuff method to the App.MyChannel (after the receive method) as follow:
-```
-this.App.MyChannel = this.App.cable.subscriptions.create({channel: "MyChannel", context: {} }, {
-      // ActionCable callbacks
-      connected: function() {
-        console.log("connected");
-      },
-      disconnected: function() {
-        console.log("disconnected");
-      },
-      rejected: function() {
-        console.log("rejected");
-      },
-      received: function(data) {
-        console.log('Data Received from backend', data);
-      },
-      doStuff: function(data){
-        console.log('Doing stuff', data);
-        this.perform('doStuff', data);
-      }
-    });
-```
-Ok. So our button click calls doStuff method of App.MyChannel.
-
-Inside the doStuff method, you can see ```this.perform('doStuff', data)```
-This is calling our channel method 'doStuff' in our backend ! And it's even passing arguments (our data).
-
-So let's see it all in action.
-Reload your application (or run it using ```foreman start -p 3000``` if not running)
-1 - You should see what we've already seen before, connected printed in the javascript console.
-And on the command line interface, you should see this
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/Apr/Screen_Shot_2017_04_10_at_12_12_38_PM-1491822785779.png)
-2 - After clicking on the button, you should see this in your browser console
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/Apr/Screen_Shot_2017_04_10_at_12_13_43_PM-1491822860496.png)
-And this on your command line interface
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/Apr/Screen_Shot_2017_04_10_at_12_15_02_PM-1491822922668.png)
-
-So on click, Angular ran the doStuff method of the App.Channel property, which called a this.perform('doStuff', data). The perform here is used to actually called the backend method in the MyChannel class.
-
-The backend method ran and at the end broadcasted the result that was received by Angular through App.MyChannel again -> received method.
-
-> Congratulations ! You now successfully linked Angular and rails5 ActionCable together to access backend method through WebSocket.
-
-######Important note
-
-You might have noticed the ```context: {} ``` variable passed in the ```this.App.MyChannel = this.App.cable.subscriptions.create({channel: "MyChannel", context: {} }, {...```
-
-**WebSockets need a context**
-
-Let's say you and I are using this app at the same time. Now, you are clicking the button. We'll both receive a notification 'Data received...' because we both subscribed to the same stream that broadcasts the response.
-
-**But I didn't do anything, you did... So I shouldn't get notified right ?**
-
-It doesn't matter much here, but what if you were retrieving some sensitive information ?  I would receive it too.
-
-What are the options then ?
-1 - Make the stream linked to the logged-in user Id so each User has his own stream.
-2 - If you need more context, you can simply pass it from Angular to Rails and back and check it (hence the context variable).
-
-###### A bit of Angular to finish up
-
-I thought I would try to show some Angular stuff quickly on the way.
-So I want to show how externalize a component on Angular. It's quite basic but important as you can then organize your app better.
-
-Let's create a new folder called structure containing a header-component component. ```/public/app/structure/header-component.ts```:
-
-```
-import {Component} from '@angular/core'
-
-@Component({
-  selector: 'header-component',
-  templateUrl: '/app/structure/header-component.html'
-})
-
-export class HeaderComponent{}
-```
-Note the selector. This is what we'll use to inject the component. Try to not use selector names like 'header' or 'article' as those are standard html already existing element tags and can lead to conflicts.
-
-Then let's create the template by copy/pasting the header html code from the app.component.html:
- ```/public/app/structure/header-component.html ```
-
-```
-<div class="slds-page-header" role="banner">
-  <div class="slds-media slds-media--center">
-    <div class="slds-media__figure">
-      <svg aria-hidden="true" class="slds-icon slds-icon-standard-quotes">
-        <use xlink:href="/css/assets/icons/standard-sprite/svg/symbols.svg#endorsement"></use>
-      </svg>
-    </div>
-    <div class="slds-media__body">
-      <p class="slds-page-header__title slds-truncate slds-align-middle" title="My App">This is a Header</p>
-      <p class="slds-text-body--small page-header__info">Testing SLDS with Angular Final and Rails 5</p>
-    </div>
+  <div class="slds-p-horizontal--small slds-size--1-of-1">
+    <ul class="slds-has-dividers--around-space" *ngIf="accounts">
+      <li *ngFor="let a of accounts" class="slds-item">{{ a.Name }}</li>
+    </ul>
   </div>
 </div>
 ```
+Restart your server and reload localhost:3000. Click on the doStuff button and you should see something like that:
+![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_1_18_47_PM-1494332340870.png)
 
-And replace this code in app.component.html using the new header-component selector:```<header-component></header-component>```
+> You now have set up Salesforce data access from your Rails5 / Angular4 app !
 
-Last thing we need to do it's to add the new component to the overall app module.
+In the next post, I'll show how to set up Heroku to get this all working in the cloud ! ;)
 
-In ``` /public/app/app.module.ts ```, Import the new component:
-
-```
-import {HeaderComponent} from './structure/header-component.ts'
-```
-And add it up to @NgModule Declarations:
-```
-@NgModule({
-  imports: [
-    BrowserModule
-  ],
-    declarations: [
-      AppComponent,
-      HeaderComponent
-  ],
-  bootstrap: [ AppComponent ]
-})
-```
-Et Voilà !!
-You should still have your header as follow:
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/Apr/Screen_Shot_2017_04_10_at_12_43_38_PM-1491824664380.png)
-
-You can now organize your code as you'd like by externalizing any component.
-
-There are lots of other things I'd like to show but I am not going to write a book right now so stay tuned for the next post(s).
+Meanwhile, you can play around Restforce capability to enhance your app. [Library link](https://github.com/ejholmes/restforce)
 
  #chill

@@ -21,6 +21,8 @@ System.register(["@angular/core"], function (exports_1, context_1) {
             AppComponent = (function () {
                 function AppComponent() {
                     this.App = {};
+                    console.log(context);
+                    var self = this;
                     this.App.cable = ActionCable.createConsumer("ws://localhost:3000/cable");
                     this.App.MyChannel = this.App.cable.subscriptions.create({ channel: "MyChannel", context: {} }, {
                         // ActionCable callbacks
@@ -35,9 +37,13 @@ System.register(["@angular/core"], function (exports_1, context_1) {
                         },
                         received: function (data) {
                             console.log('Data Received from backend', data);
+                            if (data && data.accounts) {
+                                self.accounts = data.accounts;
+                            }
                         },
                         doStuff: function (data) {
                             console.log('Doing stuff', data);
+                            data.context = context;
                             this.perform('doStuff', data);
                         }
                     });

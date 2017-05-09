@@ -4,4 +4,9 @@
     <button class="slds-button slds-button--destructive slds-m-right--small"
             (click)="App.MyChannel.doStuff({ data: 'Just a string' })">Do Stuff</button>
   </div>
+  <div class="slds-p-horizontal--small slds-size--1-of-1">
+    <ul class="slds-has-dividers--around-space" *ngIf="accounts">
+      <li *ngFor="let a of accounts" class="slds-item">{{ a.Name }}</li>
+    </ul>
+  </div>
 </div>
