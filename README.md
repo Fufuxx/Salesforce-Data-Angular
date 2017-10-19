@@ -43,14 +43,11 @@ Call it the name you want. I chose Salesforce auth.
 Tick the enable OAuth Settings and enter ```http://localhost:3000/auth/salesforce/callback``` as callback url.
 Finally give full access and save.
 
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_11_45_47_AM-1494326773533.png)
-
 You now should have access to client_id and client_secret.
 Let's set them up as env variable in our project.
 
 Go to your app directory and create a new file called .env (if you don't have one already).
-Like so (of course replace ```CLIENT_ID``` and ```CLIENT_SECRET`` values with the one from your connected app):
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_10_48_44_AM-1494323348095.png)
+Like so (of course replace ```CLIENT_ID``` and ```CLIENT_SECRET`` values with the one from your connected app)
 
 This will set them up as Environment variable for our project.
 
