@@ -304,8 +304,6 @@ console.log(context);
 Go to your browser, localhost:3000 and inspect the page.
 You should now see the context object print in the console containing your context (user id and organization id).
 
-![](https://sdotools-q-labs.s3.amazonaws.com/2017/May/Screen_Shot_2017_05_09_at_12_50_42_PM-1494330676701.png)
-
 > Now that you have the context, you can use it by sending it in the request you make to Rails. Rails will then be able to retrieve the corresponding db record and get the token to use Restforce library to play with your instance data.
 
 ###### Restforce Example - Getting a list of Account
